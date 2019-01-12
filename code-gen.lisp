@@ -17,7 +17,7 @@
       (200 (cl-json:decode-json body)))))
 
 ;;; RE Pattern 
-(defparameter *parameter-pattern* "{([a-zA-Z\-]+)}")
+(defparameter *parameter-pattern* "{([a-zA-Z\-_\.]+)}")
 
 (defun parse-path-parameters (path)
   "returns two values, 1st is non param path element, 2nd are the params.
