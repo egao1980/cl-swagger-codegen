@@ -69,7 +69,9 @@
 "
 ;;
 ;; summary : {{summary}}
-;; description : {{{description}}}
+{{#description}}
+;; {{{.}}}
+{{/description}}
 ;; * path : {{paths}}
 ;;
 (defun {{first-name}}-{{path-name}} (&key param content basic-authorization)
@@ -99,7 +101,9 @@
 (define rest-call-templete-v1
   "
 ;;
-;; {{description}}
+{{#description}}
+;; {{{.}}}
+{{/description}}
 ;; * path-url : {{paths}}
 ;;
 (defun {{first-name}}-{{path-name}} (&key params content basic-authorization)
@@ -112,7 +116,9 @@
 (define rest-call-templete-v2
   "
 ;;
-;; {{description}}
+{{#description}}
+;; {{{.}}}
+{{/description}}
 ;; * path-url : {{paths}}
 ;;
 (defun {{first-name}}-{{path-name}} (path-url &key params content basic-authorization)
@@ -168,7 +174,7 @@
                                         (:path-url . ,(first paths))
                                         (:first-name . ,(lambda () (string-downcase (format nil "~A" (first path)))))
                                         (:method . ,(lambda() (format nil ":~A" (first path))))
-                                        (:description . ,(lambda() (format nil "~A" (cl-ppcre:regex-replace-all "\\n" (get-in '(:|description|) (cdr path)) "\\n"))))
+                                        (:description . ,(cl-ppcre:split "\\n" (or (get-in '(:|description|) (cdr path)) "")))
                                         (:accept . ,"application/json")
                                         (:accept-type . "application/json"))))
                             (if options
