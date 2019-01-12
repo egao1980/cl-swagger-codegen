@@ -31,7 +31,7 @@
                                                (*parameter-pattern* v) param)))
                                 (if param
                                     (list (first acc) (push param (second acc)))
-                                    (list (push v (first acc)) (second acc))))))
+                                    (list (push (substitute #\- #\_ v) (first acc)) (second acc))))))
                         (cl-ppcre:split "/" (string path))
                         :initial-value (list nil nil)))))
 
@@ -107,11 +107,13 @@
 ;; * path-url : {{paths}}
 ;;
 (defun {{first-name}}-{{path-name}} (&key params content basic-authorization)
-  (rest-call \"{{baseurl}}\" \"{{path-url}}\" :params params :content content
-                            :basic-authorization basic-authorization
-                            :method {{method}}
-                            :accept \"{{accept}}\"
-                            :content-type \"{{accept-type}}\"))")
+  (rest-call \"{{baseurl}}\" \"{{path-url}}\" 
+             :params params 
+             :content content
+             :basic-authorization basic-authorization
+             :method {{method}}
+             :accept \"{{accept}}\"
+             :content-type \"{{accept-type}}\"))")
 
 (define rest-call-templete-v2
   "
@@ -121,12 +123,15 @@
 {{/description}}
 ;; * path-url : {{paths}}
 ;;
-(defun {{first-name}}-{{path-name}} (path-url &key params content basic-authorization)
-  (rest-call \"{{baseurl}}\" path-url :params params :content content
-                                              :basic-authorization basic-authorization
-                                              :method {{method}}
-                                              :accept \"{{accept}}\"
-                                              :content-type \"{{accept-type}}\"))")
+(defun {{first-name}}-{{path-name}} ({{#path-args}}{{.}} {{/path-args}}&key params content basic-authorization)
+  (rest-call \"{{baseurl}}\" 
+             (format nil \"{{path-pattern}}\"{{#path-params}} {{.}}{{/path-params}}) 
+             :params params 
+             :content content
+             :basic-authorization basic-authorization
+             :method {{method}}
+             :accept \"{{accept}}\"
+             :content-type \"{{accept-type}}\"))")
 
 
 (define convert-json-templete
@@ -172,11 +177,14 @@
                                         (:paths . ,(lambda () (car paths)))
                                         (:path-name . ,(lambda () (string-downcase (normalize-path-name (first paths)))))
                                         (:path-url . ,(first paths))
+                                        (:path-args . ,(remove-duplicates options :test #'string= :from-end t))
+                                        (:path-params . ,options)
+                                        (:path-pattern . ,(cl-ppcre:regex-replace-all *parameter-pattern* (format nil "~A" (first paths)) "~a"))
                                         (:first-name . ,(lambda () (string-downcase (format nil "~A" (first path)))))
                                         (:method . ,(lambda() (format nil ":~A" (first path))))
                                         (:description . ,(cl-ppcre:split "\\n" (or (get-in '(:|description|) (cdr path)) "")))
                                         (:accept . ,"application/json")
-                                        (:accept-type . "application/json"))))
+                                        (:accept-type . ,"application/json"))))
                             (if options
                                 (rest-call-templete-v2 tmp)
                                 (rest-call-templete-v1 tmp)))))))
