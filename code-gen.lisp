@@ -30,8 +30,8 @@
                               (let ((param (cl-ppcre:register-groups-bind (param)
                                                (*parameter-pattern* v) param)))
                                 (if param
-                                    (list (first acc) (push param (second acc)))
-                                    (list (push (substitute #\- #\_ v) (first acc)) (second acc))))))
+                                    (list (first acc) (push (param-case param) (second acc)))
+                                    (list (push (param-case v) (first acc)) (second acc))))))
                         (cl-ppcre:split "/" (string path))
                         :initial-value (list nil nil)))))
 
