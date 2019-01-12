@@ -65,21 +65,11 @@
   "scheme + hostname + basepath"
   (concatenate 'string (get-schemes json) "://" (get-host json) (get-basepath json)))
 
-(define wrapper-call-templete-v2
-"
-;;
-;; summary : {{summary}}
-{{#description}}
-;; {{{.}}}
-{{/description}}
-;; * path : {{paths}}
-;;
-(defun {{first-name}}-{{path-name}} (&key param content basic-authorization)
-  (multiple-value-bind (stream code header)
-      (drakma:http-request (concatenate 'string \"{{baseurl}}/{{path-url}}?\" param) :basic-authorization basic-authorization :accept \"{{accept}}\" :content-type \"{{accept-type}}\" :content content :want-stream t :method {{method}})
-    (if (equal code 200) (progn (setf (flexi-streams:flexi-stream-external-format stream) :utf-8)
-                                (cl-json:decode-json stream))
-        (format t \"failed - code : ~a\" code))))")
+(defun get-operation-name (path-name operation-json)
+  (param-case
+   (or
+    (get-in '(:|operationId|) (cdr operation-json))
+    path-name)))
 
 
 (define rest-call-function
@@ -104,9 +94,12 @@
 {{#description}}
 ;; {{{.}}}
 {{/description}}
-;; * path-url : {{paths}}
+;; * path-url     : {{paths}}
+{{#operation-id}}
+;; * operation-id : {{operation-id}}
+{{/operation-id}}
 ;;
-(defun {{first-name}}-{{path-name}} (&key params content basic-authorization)
+(defun {{function-name}} (&key params content basic-authorization)
   (rest-call \"{{baseurl}}\" \"{{path-url}}\" 
              :params params 
              :content content
@@ -121,9 +114,12 @@
 {{#description}}
 ;; {{{.}}}
 {{/description}}
-;; * path-url : {{paths}}
+;; * path-url     : {{paths}}
+{{#operation-id}}
+;; * operation-id : {{operation-id}}
+{{/operation-id}}
 ;;
-(defun {{first-name}}-{{path-name}} ({{#path-args}}{{.}} {{/path-args}}&key params content basic-authorization)
+(defun {{function-name}} ({{#path-args}}{{.}} {{/path-args}}&key params content basic-authorization)
   (rest-call \"{{baseurl}}\" 
              (format nil \"{{path-pattern}}\"{{#path-params}} {{.}}{{/path-params}}) 
              :params params 
@@ -168,7 +164,7 @@
     (rest-call-function)
     (loop for paths in (get-in '(:|paths|) json)
           do (loop for path in (rest paths)
-                   do ;;(format t "~%~A==>~A~%" (first paths) (first path))
+                   do ;;(format t "~%~A==>~A~%" (first paths) (get-in '(:|operationId|) (cdr path)))
                       (when (or (equal (first path) :|get|) (equal (first path) :|post|))
                         (multiple-value-bind (fnames options)
                             (parse-path-parameters (first paths))
@@ -176,12 +172,14 @@
                           (let ((tmp  `((:baseurl . ,(lambda () (make-urls json)))
                                         (:paths . ,(lambda () (car paths)))
                                         (:path-name . ,(lambda () (string-downcase (normalize-path-name (first paths)))))
+                                        (:function-name . ,(lambda () (get-operation-name (normalize-path-name (first paths)) path)))
                                         (:path-url . ,(first paths))
                                         (:path-args . ,(remove-duplicates options :test #'string= :from-end t))
                                         (:path-params . ,options)
                                         (:path-pattern . ,(cl-ppcre:regex-replace-all *parameter-pattern* (format nil "~A" (first paths)) "~a"))
                                         (:first-name . ,(lambda () (string-downcase (format nil "~A" (first path)))))
                                         (:method . ,(lambda() (format nil ":~A" (first path))))
+                                        (:operation-id . ,(get-in '(:|operationId|) (cdr path)))
                                         (:description . ,(cl-ppcre:split "\\n" (or (get-in '(:|description|) (cdr path)) "")))
                                         (:accept . ,"application/json")
                                         (:accept-type . ,"application/json"))))
